@@ -3,17 +3,20 @@ package main
 import (
     "strings"
     "fmt"
-    "net/url"
+    "net/http"
+    "encoding/json"
+    "bytes"
+    "log"
 )
 
-var base url.URL
+var root string
 
 func main() {
   fmt.Printf("Hit Ctrl+D to quit\r\n")
   initTerm();
   defer restoreTerm()
 
-  set_base("http://localhost");
+  setRoot("http://localhost");
  
 
   for {
@@ -31,29 +34,56 @@ func main() {
     switch tokens[0] {
     case "headers" :
       handle_headers(tokens)
-    case "base" :
-      handle_base(tokens)
+    case "root" :
+      handleRoot(tokens)
+    case "get" :
+      handleGet(tokens)
     default :
       fmt.Printf("Unknown command, %v\r\n", tokens[0])
     }
   }    
 }
 
-func set_base(str string) {
-  default_url, err := url.Parse(str)
-  if err != nil {
-    fmt.Printf("Invalid url %v:%v\r\n", str, err)
-  } else {
-    base = *default_url;
-  }    
+func setRoot(str string) {
+  root = str
 }
 
-func handle_base(tokens []string) {
+func handleRoot(tokens []string) {
 
   if (len(tokens) == 1) {
-    fmt.Printf("%\r\n", base.String())
+    fmt.Printf("%v\r\n", root)
   } else {
-    set_base(strings.TrimSpace(tokens[1]))
+    setRoot(strings.TrimSpace(tokens[1]))
+  }
+}
+
+func handleGet(tokens []string) {
+
+  url := root
+  if (len(tokens) > 1) {
+    url = root + tokens[1]
+  } 
+
+  response, err := http.Get(url)
+  if (err != nil) {
+    fmt.Printf("Couldn't perform GET: %v\r\n", err)
+  } else {
+    defer response.Body.Close()
+    fmt.Printf("Server returned %v\r\n", response.Status)
+    if (response.ContentLength != 0) {
+      formatted := new(bytes.Buffer)
+      buf := new(bytes.Buffer)
+      buf.ReadFrom(response.Body)
+      bytes := buf.Bytes()
+      error := json.Indent(formatted, bytes, "", "  ")
+      if error != nil {
+        log.Println("JSON parse error: ", error)
+      } else {
+        writeTerm(formatted.Bytes())
+        // io.Copy(os.Stdout, formatted)
+        fmt.Printf("\r\n")        
+      }
+    }
   }
 }
 

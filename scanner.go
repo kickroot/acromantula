@@ -24,6 +24,10 @@ func initTerm() {
   }
 }
 
+func writeTerm(bytes []byte) {
+  term.Write(bytes)
+}
+
 func readTerm() ([]string, error) {
   str, err := term.ReadLine()
   if (err != nil) {
