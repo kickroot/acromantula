@@ -7,29 +7,41 @@ import (
   "golang.org/x/crypto/ssh/terminal"
 )
 
-var termState *terminal.State
-var term terminal.Terminal
 
-func restoreTerm() {
-	terminal.Restore(0, termState)
+type Term struct {
+  termState *terminal.State
+  term terminal.Terminal
+  fd int
 }
 
-func initTerm() {
-  oldState, err := terminal.MakeRaw(0)  
+func createTerm(fd int) *Term {
+  t := new(Term)
+  oldState, err := terminal.MakeRaw(fd)  
   if (err != nil) {
     log.Fatal(err)
   } else {
-    termState = oldState;
-    term = *terminal.NewTerminal(os.Stdin, "acro >> ")
+    t.fd = fd
+    t.termState = oldState
+    t.term = *terminal.NewTerminal(os.Stdin, "acro >> ")
+    return t
   }
+  return nil
 }
 
-func writeTerm(bytes []byte) {
-  term.Write(bytes)
+func (t *Term) restoreTerm() {
+	terminal.Restore(t.fd, t.termState)
 }
 
-func readTerm() ([]string, error) {
-  str, err := term.ReadLine()
+func (t *Term) writeString(str string) {
+  t.term.Write([]byte(str))
+}
+
+func (t *Term) writeBytes(bytes []byte) {
+  t.term.Write(bytes)
+}
+
+func (t *Term) readline() ([]string, error) {
+  str, err := t.term.ReadLine()
   if (err != nil) {
       return  nil, err
     } else {

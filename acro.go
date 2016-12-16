@@ -3,24 +3,23 @@ package main
 import (
     "strings"
     "fmt"
-    "net/http"
-    "encoding/json"
-    "bytes"
-    "log"
 )
 
 var root string
+var term *Term
 
 func main() {
+  term = createTerm(0)
+
   fmt.Printf("Hit Ctrl+D to quit\r\n")
-  initTerm();
-  defer restoreTerm()
+
+  defer term.restoreTerm()
 
   setRoot("http://localhost");
  
 
   for {
-    tokens, err := readTerm()
+    tokens, err := term.readline()
     
     if err != nil {
       fmt.Printf("\r\nExiting....%v\r\n", err)
@@ -59,32 +58,34 @@ func handleRoot(tokens []string) {
 
 func handleGet(tokens []string) {
 
+
   url := root
   if (len(tokens) > 1) {
     url = root + tokens[1]
   } 
-
-  response, err := http.Get(url)
-  if (err != nil) {
-    fmt.Printf("Couldn't perform GET: %v\r\n", err)
-  } else {
-    defer response.Body.Close()
-    fmt.Printf("Server returned %v\r\n", response.Status)
-    if (response.ContentLength != 0) {
-      formatted := new(bytes.Buffer)
-      buf := new(bytes.Buffer)
-      buf.ReadFrom(response.Body)
-      bytes := buf.Bytes()
-      error := json.Indent(formatted, bytes, "", "  ")
-      if error != nil {
-        log.Println("JSON parse error: ", error)
-      } else {
-        writeTerm(formatted.Bytes())
-        // io.Copy(os.Stdout, formatted)
-        fmt.Printf("\r\n")        
-      }
-    }
-  }
+  
+  performGet(term, url, all_headers());
+  // response, err := http.Get(url)
+  // if (err != nil) {
+  //   fmt.Printf("Couldn't perform GET: %v\r\n", err)
+  // } else {
+  //   defer response.Body.Close()
+  //   fmt.Printf("Server returned %v\r\n", response.Status)
+  //   if (response.ContentLength != 0) {
+  //     formatted := new(bytes.Buffer)
+  //     buf := new(bytes.Buffer)
+  //     buf.ReadFrom(response.Body)
+  //     bytes := buf.Bytes()
+  //     error := json.Indent(formatted, bytes, "", "  ")
+  //     if error != nil {
+  //       log.Println("JSON parse error: ", error)
+  //     } else {
+  //       writeTerm(formatted.Bytes())
+  //       // io.Copy(os.Stdout, formatted)
+  //       fmt.Printf("\r\n")        
+  //     }
+  //   }
+  // }
 }
 
 func handle_headers(tokens []string) {
