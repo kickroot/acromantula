@@ -1,14 +1,39 @@
 package main
 
-var default_headers map[string]string =  make(map[string]string)
-var user_headers map[string]string =  make(map[string]string)
-
-func init() {
-	build_default_headers()
+// Headers we send to the server
+type Headers struct {
+	defaultHeaders map[string]string
+	userHeaders    map[string]string
 }
 
-func build_default_headers() {
-  default_headers["Accept"] = "application/json"
-  default_headers["Accept-Charset"] = "utf-8"
-  default_headers["User-Agent"] ="Acromantula CLI 0.1.0"
+func createHeaders() *Headers {
+	h := new(Headers)
+	h.defaultHeaders = make(map[string]string)
+	h.userHeaders = make(map[string]string)
+	h.defaults()
+	return h
+}
+
+func (h *Headers) defaults() {
+	h.defaultHeaders["Accept"] = "application/json"
+	h.defaultHeaders["Accept-Charset"] = "utf-8"
+	h.defaultHeaders["User-Agent"] = "Acromantula CLI 0.1.0"
+}
+
+func (h *Headers) add(key string, value string) {
+	h.userHeaders[key] = value
+}
+
+func (h *Headers) all() map[string]string {
+	allHeaders := make(map[string]string)
+
+	for k, v := range h.defaultHeaders {
+		allHeaders[k] = v
+	}
+
+	for k, v := range h.userHeaders {
+		allHeaders[k] = v
+	}
+
+	return allHeaders
 }
