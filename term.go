@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bytes"
+	"fmt"
 	"log"
 	"os"
-	"strings"
+	"unicode"
 
 	"golang.org/x/crypto/ssh/terminal"
 )
@@ -46,10 +48,74 @@ func (t *Term) readline() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	tokens := strings.Split(str, " ")
-	trimmedTokens := make([]string, len(tokens), len(tokens))
-	for index, value := range tokens {
-		trimmedTokens[index] = strings.TrimSpace(value)
+	// tokens := strings.Split(str, " ")
+	// trimmedTokens := make([]string, len(tokens), len(tokens))
+	// for index, value := range tokens {
+	// 	trimmedTokens[index] = strings.TrimSpace(value)
+	// }
+	// return trimmedTokens, nil
+
+	return t.tokenize(str), nil
+}
+
+func (t *Term) tokenize(str string) []string {
+
+	// Final tokenized set of strings.  5 is a pretty middle of the road choice
+	tokens := make([]string, 0, 5)
+
+	// Used to build the intermediate token
+	buffer := bytes.NewBuffer(make([]byte, 0, 0))
+
+	isDoubleQuoted := false
+	isEscaped := false
+
+	for _, rune := range str {
+		//
+		// If we are in escaped mode, write the previous character
+		// literally.
+		//
+		if isEscaped {
+			buffer.WriteRune(rune)
+			isEscaped = false
+			continue
+		}
+
+		char := fmt.Sprintf("%c", rune)
+
+		if char == "\\" {
+			isEscaped = true
+			continue
+		}
+
+		if char == "\"" {
+			isDoubleQuoted = !isDoubleQuoted
+			continue
+		}
+
+		//
+		// We only care if we are not in double quotes
+		//
+		if unicode.IsSpace(rune) && !isDoubleQuoted {
+			tokens = append(tokens, buffer.String())
+			buffer.Reset()
+		} else {
+			buffer.WriteRune(rune)
+		}
+
 	}
-	return trimmedTokens, nil
+
+	//
+	// At this point we should certainly be out of any quoted context
+	//
+	if isDoubleQuoted {
+		t.writeString("Error, double quotes don't seem to match up\n")
+		return []string{}
+	}
+
+	//
+	// Push the remaining string
+	//
+	tokens = append(tokens, buffer.String())
+
+	return tokens
 }
