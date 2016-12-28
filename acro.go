@@ -8,22 +8,25 @@ import (
 var root string
 var term *Term
 var headers *Headers
+var settings map[string]string
 
 func main() {
 	term = createTerm(0)
 	headers = createHeaders()
+	settings = make(map[string]string)
+	settings["prompt"] = "acro >> "
 
-	fmt.Printf("Hit Ctrl+D to quit\r\n")
+	term.writeString("Hit Ctrl+D to quit\n")
 
 	defer term.restoreTerm()
 
-	setRoot("https://api.sourceclear.com")
+	settings["root"] = "https://api.sourceclear.com"
 
 	for {
 		tokens, err := term.readline()
 
 		if err != nil {
-			fmt.Printf("\r\nExiting....%v\r\n", err)
+			term.writeString(fmt.Sprintf("\nExiting....%v\n", err))
 			break
 		}
 
@@ -32,14 +35,18 @@ func main() {
 		}
 
 		switch tokens[0] {
+		case "header":
+			handleHeaders(tokens)
 		case "headers":
 			handleHeaders(tokens)
-		case "root":
-			handleRoot(tokens)
+		case "set":
+			handleSet(tokens)
+		case "settings":
+			handleSet(tokens)
 		case "get":
 			handleGet(tokens)
 		default:
-			fmt.Printf("Unknown command, %v\r\n", tokens[0])
+			term.writeString(fmt.Sprintf("Unknown command, %v\r\n", tokens[0]))
 		}
 	}
 }
@@ -48,10 +55,28 @@ func setRoot(str string) {
 	root = str
 }
 
+func handleSet(tokens []string) {
+
+	if len(tokens) == 1 {
+		for key, value := range settings {
+			term.writeString(fmt.Sprintf("  %v => %v\n", key, value))
+		}
+		return
+	}
+
+	if len(tokens) < 3 {
+		term.writeString(fmt.Sprintf("%v needs a value\n", tokens[1]))
+	} else {
+		settings[tokens[1]] = tokens[2]
+		term.setPrompt(settings["prompt"] + " >> ")
+	}
+}
+
 func handleRoot(tokens []string) {
 
 	if len(tokens) == 1 {
-		fmt.Printf("%v\r\n", root)
+		term.writeString(fmt.Sprintf("%v\n", root))
+
 	} else {
 		setRoot(strings.TrimSpace(tokens[1]))
 	}
@@ -59,9 +84,14 @@ func handleRoot(tokens []string) {
 
 func handleGet(tokens []string) {
 
-	url := root
+	url := settings["root"]
+	if len(url) == 0 && len(tokens) < 2 {
+		term.writeString("No root or URL specified.\n")
+		return
+	}
+
 	if len(tokens) > 1 {
-		url = root + tokens[1]
+		url = url + tokens[1]
 	}
 
 	performGet(term, url, headers)
@@ -73,9 +103,13 @@ func handleHeaders(tokens []string) {
 	// In the case of just 'headers'
 	//
 	if len(tokens) == 1 {
-		fmt.Printf("Headers\r\n")
+		term.writeString("Headers\n")
 		for k, v := range headers.all() {
-			fmt.Printf("%v => %v\r\n", k, v)
+			if k == "Authorization" {
+				v = "****************"
+			}
+			term.writeString(fmt.Sprintf("%v => %v\n", k, v))
+
 		}
 		return
 	}
@@ -83,12 +117,12 @@ func handleHeaders(tokens []string) {
 	switch tokens[1] {
 	case "set":
 		if len(tokens) < 4 {
-			fmt.Printf("%v is missing a value\r\n")
+			term.writeString(fmt.Sprintf("%v is missing a value\r\n", tokens[2]))
 		} else {
 			headers.add(tokens[2], tokens[3])
 		}
 	default:
-		fmt.Printf("Unknown option %v\r\n", tokens[1])
+		term.writeString(fmt.Sprintf("Unknown option %v\r\n", tokens[1]))
 	}
 
 }

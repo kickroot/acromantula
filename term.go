@@ -35,6 +35,10 @@ func (t *Term) restoreTerm() {
 	terminal.Restore(t.fd, t.termState)
 }
 
+func (t *Term) setPrompt(prompt string) {
+	t.term.SetPrompt(prompt)
+}
+
 func (t *Term) writeString(str string) {
 	t.term.Write([]byte(str))
 }

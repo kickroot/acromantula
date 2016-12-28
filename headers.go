@@ -20,6 +20,12 @@ func (h *Headers) defaults() {
 	h.defaultHeaders["User-Agent"] = "Acromantula CLI 0.1.0"
 }
 
+func (h *Headers) addAll(headers map[string]string) {
+	for k, v := range headers {
+		h.add(k, v)
+	}
+}
+
 func (h *Headers) add(key string, value string) {
 	h.userHeaders[key] = value
 }

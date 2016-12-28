@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 )
 
@@ -39,9 +38,6 @@ func performGet(term *Term, url string, headers *Headers) {
 		term.writeString("Response Headers\n")
 		for header, values := range response.Header {
 			term.writeString(fmt.Sprintf(" %v <= %v\n", header, values))
-			// for value := range values {
-			// 	fmt.Printf("%v: %v\r\n", header, values)
-			// }
 		}
 
 		if response.ContentLength != 0 {
@@ -51,12 +47,11 @@ func performGet(term *Term, url string, headers *Headers) {
 			bytes := buf.Bytes()
 			error := json.Indent(formatted, bytes, "", "  ")
 			if error != nil {
-				log.Println("JSON parse error: ", error)
+				term.writeBytes(bytes)
 			} else {
 				term.writeBytes(formatted.Bytes())
-				// io.Copy(os.Stdout, formatted)
-				fmt.Printf("\r\n")
 			}
+			term.writeString("\n")
 		}
 	}
 }
