@@ -9,11 +9,11 @@ import (
 
 var client = &http.Client{}
 
-func performGet(term *Term, url string, headers *Headers) {
+func performGet(term *Term, url string, settings *Settings) {
 
 	request, err := http.NewRequest("GET", url, nil)
 
-	for k, v := range headers.all() {
+	for k, v := range settings.Headers {
 		request.Header[k] = []string{v}
 	}
 

@@ -18,15 +18,13 @@ func initSettings(settingsFile string) (*Settings, error) {
 	settings.Settings = make(map[string]string)
 	settings.Headers = make(map[string]string)
 
-	// usr, err := user.Current()
-	// if err != nil {
-	// 	return &settings, err
-	// } else if len(usr.HomeDir) == 0 {
-	// 	return &settings, errors.New(Sprintf("Coulidn't find home folder for %v", usr))
-	// }
+	settings.Headers["Accept"] = "application/json"
+	settings.Headers["Accept-Charset"] = "utf-8"
+	settings.Headers["User-Agent"] = "Acromantula CLI 0.1.0"
 
-	// settingsFile := filepath.Join(usr.HomeDir, ".acromantula", "settings.yml")
-	//Printf("Reading file %v", settingsFile)
+	settings.Settings["root"] = "http://localhost"
+	settings.Settings["prompt"] = "acro"
+
 	bytes, err := ioutil.ReadFile(settingsFile)
 
 	if err != nil {
