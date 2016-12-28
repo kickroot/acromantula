@@ -1,0 +1,8 @@
+settings:
+  setting1: one
+  setting2: two
+
+
+headers:
+  User-Agent: acro-test
+  TestHeader: testValue
