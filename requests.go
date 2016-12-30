@@ -18,7 +18,7 @@ func performGet(term *Term, url string, settings *Settings) {
 	}
 
 	if err != nil {
-		term.writeString(fmt.Sprintf("Couldn't create GET request: %v", err))
+		term.writeString(fmt.Sprintf("Couldn't create GET request: %v\n", err))
 		return
 	}
 
@@ -30,7 +30,7 @@ func performGet(term *Term, url string, settings *Settings) {
 
 	response, err := client.Do(request)
 	if err != nil {
-		term.writeString(fmt.Sprintf("Couldn't perform GET request: %v", err))
+		term.writeString(fmt.Sprintf("Couldn't perform GET request: %v\n", err))
 	} else {
 		defer response.Body.Close()
 		term.writeString(fmt.Sprintf("\nServer returned %v\n", response.Status))

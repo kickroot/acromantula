@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"net/url"
 	"os/user"
 	"path/filepath"
 )
@@ -76,23 +77,39 @@ func handleSet(tokens []string) {
 		term.writeString(fmt.Sprintf("%v needs a value\n", tokens[1]))
 	} else {
 		settings.Settings[tokens[1]] = tokens[2]
-		term.setPrompt(tokens[2] + " >> ")
+		term.setPrompt(settings.Settings["prompt"] + " >> ")
 	}
 }
 
 func handleGet(tokens []string) {
+	root := settings.Settings["root"]
+	rootURL, _ := url.Parse("")
+	tokenUrl, _ := url.Parse("")
 
-	url := settings.Settings["root"]
-	if len(url) == 0 && len(tokens) < 2 {
-		term.writeString("No root or URL specified.\n")
-		return
+	if len(root) > 0 {
+		var err error
+		rootURL, err = url.Parse(root)
+		if err != nil {
+			term.writeString(fmt.Sprintf("Bad root URL specified: %v\n", err))
+			return
+		}
 	}
 
 	if len(tokens) > 1 {
-		url = url + tokens[1]
+		var err error
+		tokenUrl, err = url.Parse(tokens[1])
+		if err != nil {
+			term.writeString(fmt.Sprintf("Bad GET URL specified: %v\n", err))
+			return
+		}
 	}
 
-	performGet(term, url, settings)
+	url := rootURL.ResolveReference(tokenUrl)
+	if len(url.String()) == 0 {
+		term.writeString("No URL specified!\n")
+	}
+
+	performGet(term, url.String(), settings)
 }
 
 func handleHeaders(tokens []string) {
