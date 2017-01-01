@@ -24,8 +24,13 @@ func performGet(term *Term, url string, settings *Settings) {
 
 	term.writeString(fmt.Sprintf("\nPerforming GET on %v\n", url))
 	term.writeString("Request Headers\n")
+
 	for k, v := range request.Header {
+		if k == "Authorization" {
+			v = []string{"****************"}
+		}
 		term.writeString(fmt.Sprintf(" %v => %v\n", k, v))
+
 	}
 
 	response, err := client.Do(request)

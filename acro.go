@@ -84,7 +84,7 @@ func handleSet(tokens []string) {
 func handleGet(tokens []string) {
 	root := settings.Settings["root"]
 	rootURL, _ := url.Parse("")
-	tokenUrl, _ := url.Parse("")
+	tokenURL, _ := url.Parse("")
 
 	if len(root) > 0 {
 		var err error
@@ -97,14 +97,14 @@ func handleGet(tokens []string) {
 
 	if len(tokens) > 1 {
 		var err error
-		tokenUrl, err = url.Parse(tokens[1])
+		tokenURL, err = url.Parse(tokens[1])
 		if err != nil {
 			term.writeString(fmt.Sprintf("Bad GET URL specified: %v\n", err))
 			return
 		}
 	}
 
-	url := rootURL.ResolveReference(tokenUrl)
+	url := rootURL.ResolveReference(tokenURL)
 	if len(url.String()) == 0 {
 		term.writeString("No URL specified!\n")
 	}
@@ -120,9 +120,6 @@ func handleHeaders(tokens []string) {
 	if len(tokens) == 1 {
 		term.writeString("Headers\n")
 		for k, v := range settings.Headers {
-			if k == "Authorization" {
-				v = "****************"
-			}
 			term.writeString(fmt.Sprintf("%v => %v\n", k, v))
 
 		}
