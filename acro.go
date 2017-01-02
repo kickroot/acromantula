@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"net/http"
 	"net/url"
 	"os/user"
 	"path/filepath"
@@ -109,7 +110,22 @@ func handleGet(tokens []string) {
 		term.writeString("No URL specified!\n")
 	}
 
-	performGet(term, url.String(), settings)
+	request, err := http.NewRequest("GET", url.String(), nil)
+	if err != nil {
+		term.writeString(fmt.Sprintf("Couldn't build request: %v\n", err))
+		return
+	}
+
+	for k, v := range settings.Headers {
+		request.Header[k] = []string{v}
+	}
+
+	err = doRequest(term, request)
+	if err != nil {
+		term.writeString(fmt.Sprintf("Error performing GET: %v\n", err))
+	}
+
+	// performGet(term, url.String(), settings)
 }
 
 func handleHeaders(tokens []string) {
