@@ -16,8 +16,9 @@ var client = &http.Client{}
 // returning an error condition if one occured.
 //
 func doRequest(term *Term, req *http.Request) error {
-
-	printHeaders("Request", term, req.Header)
+	term.writeString(fmt.Sprintf("\n>>  Performing %v on %v\n", req.Method, req.URL))
+	term.writeString(fmt.Sprintf("Content-length: %v\n", req.ContentLength))
+	printHeaders(" > ", term, req.Header)
 
 	response, err := client.Do(req)
 
@@ -26,25 +27,25 @@ func doRequest(term *Term, req *http.Request) error {
 	}
 
 	defer response.Body.Close()
-	term.writeString(fmt.Sprintf("\nServer returned %v\n", response.Status))
-	printHeaders("Response", term, response.Header)
+	term.writeString(fmt.Sprintf("\n<<  Server returned HTTP %v\n", response.Status))
+	printHeaders(" < ", term, response.Header)
 	printResponse(term, response)
 	return nil
 }
 
-func printHeaders(title string, term *Term, headers http.Header) {
-	term.writeString(fmt.Sprintf("%v Headers\n", title))
+func printHeaders(prompt string, term *Term, headers http.Header) {
+	// term.writeString(fmt.Sprintf("%v Headers\n", title))
 	for header, values := range headers {
 		if strings.ToLower(header) == "authorization" {
-			term.writeString(fmt.Sprintf(" %v <= [****************]\n", header))
+			term.writeString(fmt.Sprintf("%v %v : [****************]\n", prompt, header))
 		} else {
-			term.writeString(fmt.Sprintf(" %v <= %v\n", header, values))
+			term.writeString(fmt.Sprintf("%v %v : %v\n", prompt, header, values))
 		}
 	}
 }
 
 func printResponse(term *Term, response *http.Response) {
-	term.writeString(fmt.Sprintf("Response content: %v bytes\n", response.ContentLength))
+	term.writeString(fmt.Sprintf("\n<<  Response content: %v bytes\n", response.ContentLength))
 	if response.ContentLength != 0 {
 		formatted := new(bytes.Buffer)
 		buf := new(bytes.Buffer)

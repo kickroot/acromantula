@@ -11,12 +11,14 @@ import (
 type Settings struct {
 	Settings map[string]string `yaml:"settings"`
 	Headers  map[string]string `yaml:"headers"`
+	Params   map[string]string `yaml:"params"`
 }
 
 func initSettings(settingsFile string) (*Settings, error) {
 	settings := Settings{}
 	settings.Settings = make(map[string]string)
 	settings.Headers = make(map[string]string)
+	settings.Params = make(map[string]string)
 
 	settings.Headers["Accept"] = "application/json"
 	settings.Headers["Accept-Charset"] = "utf-8"
