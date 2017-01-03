@@ -124,8 +124,6 @@ func handleGet(tokens []string) {
 	if err != nil {
 		term.writeString(fmt.Sprintf("Error performing GET: %v\n", err))
 	}
-
-	// performGet(term, url.String(), settings)
 }
 
 func handleHeaders(tokens []string) {
