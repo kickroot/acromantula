@@ -6,3 +6,6 @@ install:
 
 test:
 	go test -v
+
+run:
+	go build -o acro && ./acro

@@ -36,7 +36,7 @@ func (t *Term) restoreTerm() {
 }
 
 func (t *Term) setPrompt(prompt string) {
-	t.term.SetPrompt(prompt)
+	t.term.SetPrompt(fmt.Sprintf("%v >> ", prompt))
 }
 
 func (t *Term) writeString(str string) {
