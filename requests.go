@@ -6,10 +6,11 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 )
 
 var transport = &http.Transport{DisableKeepAlives: false}
-var client = &http.Client{Transport: transport}
+var client = &http.Client{Timeout: time.Second * 10, Transport: transport}
 
 //
 // doRequest takes the supplied Request object and attempts to

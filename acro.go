@@ -19,6 +19,12 @@ var root string
 var term *Term
 var settings *Settings
 var config *configuration
+var headersCommand *mapCommand
+var paramsCommand *mapCommand
+var settingsCommand *mapCommand
+var getCommand *httpCommand
+var deleteCommand *httpCommand
+var headCommand *httpCommand
 
 // The name of the currently applied configuration
 var currentConfig = defaultConfigName
@@ -28,6 +34,7 @@ func main() {
 
 	term = createTerm(0)
 	config = defaultConfig()
+
 	//
 	// All configurations are loaded/saved relative to the config root.  By default this is ~/.acromantula but
 	// can be changed via the ACRO_CONFIG_ROOT env var.
@@ -78,6 +85,8 @@ func main() {
 
 	defer term.restoreTerm()
 
+	initCommands(config)
+
 	for {
 		tokens, err := term.readline()
 
@@ -92,9 +101,9 @@ func main() {
 
 		switch tokens[0] {
 		case "header":
-			handleHeaders(tokens)
+			headersCommand.exec(tokens, term, config)
 		case "headers":
-			handleHeaders(tokens)
+			headersCommand.exec(tokens, term, config)
 		case "set":
 			handleSet(tokens)
 		case "settings":
@@ -102,7 +111,11 @@ func main() {
 		case "params":
 			handleParams(tokens)
 		case "get":
-			handleHTTPGet(tokens)
+			getCommand.exec(tokens, term, config)
+		case "delete":
+			deleteCommand.exec(tokens, term, config)
+		case "head":
+			headCommand.exec(tokens, term, config)
 		case "post":
 			handleHTTPPost(tokens)
 		case "configs":
@@ -113,6 +126,15 @@ func main() {
 			term.writeString(fmt.Sprintf("Unknown command, %v\r\n", tokens[0]))
 		}
 	}
+}
+
+func initCommands(config *configuration) {
+	headersCommand = &mapCommand{backingMap: config.settings.Headers}
+	paramsCommand = &mapCommand{backingMap: config.settings.Params}
+	settingsCommand = &mapCommand{backingMap: config.settings.Settings}
+	getCommand = &httpCommand{method: "GET"}
+	deleteCommand = &httpCommand{method: "DELETE"}
+	headCommand = &httpCommand{method: "HEAD"}
 }
 
 func handleConfig(tokens []string) {
@@ -148,6 +170,7 @@ func handleConfig(tokens []string) {
 			return
 		}
 		updatePrompt()
+		initCommands(config)
 	case "list":
 		printConfigs(configRoot)
 	case "load":
@@ -169,6 +192,7 @@ func handleConfig(tokens []string) {
 			settings = &conf.settings
 			currentConfig = config.name
 			updatePrompt()
+			initCommands(config)
 		}
 	default:
 		term.writeString(fmt.Sprintf("Unknown option '%s', try one of [save, list, load]\n", tokens[1]))
@@ -180,91 +204,12 @@ func setRoot(str string) {
 }
 
 func handleParams(tokens []string) {
-
-	if len(tokens) == 1 {
-		for key, value := range settings.Params {
-			term.writeString(fmt.Sprintf("  %v => %v\n", key, value))
-		}
-		return
-	}
-
-	switch strings.ToLower(tokens[1]) {
-	case "clear":
-		if len(tokens) != 3 {
-			term.writeString("Try 'params clear <key>'\n")
-		} else {
-			delete(settings.Params, tokens[2])
-		}
-	case "set":
-		if len(tokens) != 4 {
-			term.writeString("Try 'params set <key> <value>'\n")
-		} else {
-			settings.Params[tokens[2]] = tokens[3]
-		}
-	default:
-		term.writeString(fmt.Sprintf("Unknown option '%v', try 'set' or 'clear'\n", tokens[1]))
-	}
+	paramsCommand.exec(tokens, term, config)
 }
 
 func handleSet(tokens []string) {
-
-	if len(tokens) == 1 {
-		for key, value := range settings.Settings {
-			term.writeString(fmt.Sprintf("  %v => %v\n", key, value))
-		}
-		return
-	}
-
-	if len(tokens) < 3 {
-		term.writeString(fmt.Sprintf("%v needs a value\n", tokens[1]))
-	} else {
-		settings.Settings[tokens[1]] = tokens[2]
-		updatePrompt()
-	}
-}
-
-func buildURL(tokens []string) (*url.URL, error) {
-	root := settings.Settings["root"]
-	rootURL, _ := url.Parse("")
-	tokenURL, _ := url.Parse("")
-
-	var err error
-
-	if len(root) > 0 {
-		rootURL, err = url.Parse(root)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	//
-	// Any parameters that begin with a quote or @ cannot be the URL.
-	//
-	for _, val := range tokens[1:] {
-		if !strings.HasPrefix(val, "@") && !strings.HasPrefix(val, "#") {
-			var err error
-			tokenURL, err = url.Parse(val)
-			if err != nil {
-				return nil, err
-			}
-			break
-		}
-	}
-
-	// if len(tokens) > 1 {
-	// 	var err error
-	// 	tokenURL, err = url.Parse(tokens[1])
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// }
-
-	url := rootURL.ResolveReference(tokenURL)
-	if len(url.String()) == 0 {
-		return nil, fmt.Errorf("No URL specified!")
-	}
-
-	return url, nil
+	settingsCommand.exec(tokens, term, config)
+	updatePrompt()
 }
 
 func handleHTTPPost(tokens []string) {
@@ -326,63 +271,6 @@ func handleHTTPPost(tokens []string) {
 	err = doRequest(term, request)
 	if err != nil {
 		term.writeString(fmt.Sprintf("Error performing POST: %v\n", err))
-	}
-}
-
-func handleHTTPGet(tokens []string) {
-	url, err := buildURL(tokens)
-	if err != nil {
-		term.writeString(fmt.Sprintf("Couldn't build URL: %v\n", err))
-		return
-	}
-
-	request, err := http.NewRequest("GET", url.String(), nil)
-	if err != nil {
-		term.writeString(fmt.Sprintf("Couldn't build request: %v\n", err))
-		return
-	}
-
-	//
-	// User-specified params.
-	//
-	params := request.URL.Query()
-	for k, v := range settings.Params {
-		params.Add(k, v)
-	}
-	request.URL.RawQuery = params.Encode()
-
-	for k, v := range settings.Headers {
-		request.Header[k] = []string{v}
-	}
-
-	err = doRequest(term, request)
-	if err != nil {
-		term.writeString(fmt.Sprintf("Error performing GET: %v\n", err))
-	}
-}
-
-func handleHeaders(tokens []string) {
-
-	//
-	// In the case of just 'headers'
-	//
-	if len(tokens) == 1 {
-		for k, v := range settings.Headers {
-			term.writeString(fmt.Sprintf(" %v => %v\n", k, v))
-
-		}
-		return
-	}
-
-	switch tokens[1] {
-	case "set":
-		if len(tokens) < 4 {
-			term.writeString(fmt.Sprintf("%v is missing a value\r\n", tokens[2]))
-		} else {
-			settings.Headers[tokens[2]] = tokens[3]
-		}
-	default:
-		term.writeString(fmt.Sprintf("Unknown option %v\r\n", tokens[1]))
 	}
 }
 

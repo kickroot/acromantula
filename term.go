@@ -39,6 +39,10 @@ func (t *Term) setPrompt(prompt string) {
 	t.term.SetPrompt(fmt.Sprintf("%v >> ", prompt))
 }
 
+func (t *Term) printf(str string, args ...interface{}) {
+	t.term.Write([]byte(fmt.Sprintf(str, args...)))
+}
+
 func (t *Term) writeString(str string) {
 	t.term.Write([]byte(str))
 }
