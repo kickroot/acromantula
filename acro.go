@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"os/user"
 	"path/filepath"
 	"strings"
 )
@@ -19,12 +18,14 @@ var root string
 var term *Term
 var settings *Settings
 var config *configuration
+
 var headersCommand *mapCommand
 var paramsCommand *mapCommand
 var settingsCommand *mapCommand
 var getCommand *httpCommand
 var deleteCommand *httpCommand
 var headCommand *httpCommand
+var configCommand *configurationCommand
 
 // The name of the currently applied configuration
 var currentConfig = defaultConfigName
@@ -105,11 +106,15 @@ func main() {
 		case "headers":
 			headersCommand.exec(tokens, term, config)
 		case "set":
-			handleSet(tokens)
+			settingsCommand.exec(tokens, term, config)
+			updatePrompt()
 		case "settings":
-			handleSet(tokens)
+			settingsCommand.exec(tokens, term, config)
+			updatePrompt()
+		case "param":
+			paramsCommand.exec(tokens, term, config)
 		case "params":
-			handleParams(tokens)
+			paramsCommand.exec(tokens, term, config)
 		case "get":
 			getCommand.exec(tokens, term, config)
 		case "delete":
@@ -119,9 +124,9 @@ func main() {
 		case "post":
 			handleHTTPPost(tokens)
 		case "configs":
-			handleConfig(tokens)
+			configCommand.exec(tokens, term, config)
 		case "config":
-			handleConfig(tokens)
+			configCommand.exec(tokens, term, config)
 		default:
 			term.writeString(fmt.Sprintf("Unknown command, %v\r\n", tokens[0]))
 		}
@@ -135,81 +140,7 @@ func initCommands(config *configuration) {
 	getCommand = &httpCommand{method: "GET"}
 	deleteCommand = &httpCommand{method: "DELETE"}
 	headCommand = &httpCommand{method: "HEAD"}
-}
-
-func handleConfig(tokens []string) {
-
-	//
-	// A 'config' by itself just prompts for the current configuration
-	//
-	if len(tokens) == 1 {
-		term.writeString(fmt.Sprintf("Current config: %s [%s]\n", config.name, config.path))
-		return
-	}
-
-	switch tokens[1] {
-	case "save":
-		// With only 2 params, save to the current config
-		targetConfig := currentConfig
-		if len(tokens) > 2 {
-			targetConfig = tokens[2]
-		}
-
-		configFile, err := getConfigPath(targetConfig)
-		if err != nil {
-			term.writeString(fmt.Sprintf("Couldn't save %v: %v", targetConfig, err))
-			return
-		}
-
-		config.name = targetConfig
-		config.path = configFile
-		term.writeString(fmt.Sprintf("Saving %v to %v\n", config.name, config.path))
-		err = config.writeConfig()
-		if err != nil {
-			term.writeString(fmt.Sprintf("Couldn't save %v: %v", targetConfig, err))
-			return
-		}
-		updatePrompt()
-		initCommands(config)
-	case "list":
-		printConfigs(configRoot)
-	case "load":
-		if len(tokens) < 3 {
-			term.writeString("Please supply a configuration name as well, such as 'config load acro'\n")
-		} else {
-			configFile, err := getConfigPath(tokens[2])
-			if err != nil {
-				term.writeString(fmt.Sprintf("Couldn't load %v: %v", tokens[2], err))
-				return
-			}
-			conf, err := loadConfig(tokens[2], configFile)
-			if err != nil {
-				term.writeString(fmt.Sprintf("Couldn't load %v: %v", tokens[2], err))
-				return
-			}
-
-			config = conf
-			settings = &conf.settings
-			currentConfig = config.name
-			updatePrompt()
-			initCommands(config)
-		}
-	default:
-		term.writeString(fmt.Sprintf("Unknown option '%s', try one of [save, list, load]\n", tokens[1]))
-	}
-}
-
-func setRoot(str string) {
-	root = str
-}
-
-func handleParams(tokens []string) {
-	paramsCommand.exec(tokens, term, config)
-}
-
-func handleSet(tokens []string) {
-	settingsCommand.exec(tokens, term, config)
-	updatePrompt()
+	configCommand = &configurationCommand{}
 }
 
 func handleHTTPPost(tokens []string) {
@@ -271,49 +202,6 @@ func handleHTTPPost(tokens []string) {
 	err = doRequest(term, request)
 	if err != nil {
 		term.writeString(fmt.Sprintf("Error performing POST: %v\n", err))
-	}
-}
-
-func getConfigRoot() (string, error) {
-
-	root = os.Getenv("ACRO_CONFIG_ROOT")
-	if len(root) > 0 {
-		return root, nil
-	}
-
-	usr, err := user.Current()
-	if err != nil {
-		return "", err
-	}
-
-	return filepath.Join(usr.HomeDir, ".acromantula"), nil
-}
-
-func getConfigPath(configName string) (string, error) {
-
-	if len(configRoot) == 0 {
-		return "", fmt.Errorf("Cannot determine config location because config root is not known.")
-	}
-	return filepath.Join(configRoot, configName+".yml"), nil
-}
-
-func printConfigs(configRoot string) {
-
-	if len(configRoot) == 0 {
-		term.writeString("Can't print configs, no config root defined\n")
-	}
-
-	files, err := ioutil.ReadDir(configRoot)
-	if err != nil {
-		term.writeString(fmt.Sprintf("Couldn't list configurations: %s\n", err))
-		return
-	}
-
-	for _, file := range files {
-		if filepath.Ext(file.Name()) == ".yml" {
-			configName := strings.TrimSuffix(file.Name(), filepath.Ext(file.Name()))
-			term.writeString(fmt.Sprintf(" %v\n", configName))
-		}
 	}
 }
 

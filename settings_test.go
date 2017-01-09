@@ -47,5 +47,4 @@ func TestInvalidSettings(t *testing.T) {
 	if err == nil {
 		t.Fatalf("Expected a non-nil error value!")
 	}
-
 }

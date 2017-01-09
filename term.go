@@ -10,6 +10,10 @@ import (
 	"golang.org/x/crypto/ssh/terminal"
 )
 
+const (
+	keyEscape = 27
+)
+
 // Term is the abstraction for terminal I/O
 type Term struct {
 	termState *terminal.State
@@ -56,14 +60,23 @@ func (t *Term) readline() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	// tokens := strings.Split(str, " ")
-	// trimmedTokens := make([]string, len(tokens), len(tokens))
-	// for index, value := range tokens {
-	// 	trimmedTokens[index] = strings.TrimSpace(value)
-	// }
-	// return trimmedTokens, nil
-
 	return t.tokenize(str), nil
+}
+
+func (t *Term) bright() {
+	t.term.Write([]byte{keyEscape, '[', '0', '1', 'm'})
+}
+
+func (t *Term) dim() {
+	t.term.Write([]byte{keyEscape, '[', '0', '2', 'm'})
+}
+
+func (t *Term) underscore() {
+	t.term.Write([]byte{keyEscape, '[', '0', '4', 'm'})
+}
+
+func (t *Term) reset() {
+	t.term.Write([]byte{keyEscape, '[', '0', '0', 'm'})
 }
 
 func (t *Term) tokenize(str string) []string {

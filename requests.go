@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -18,7 +17,10 @@ var client = &http.Client{Timeout: time.Second * 10, Transport: transport}
 // returning an error condition if one occured.
 //
 func doRequest(term *Term, req *http.Request) error {
-	term.writeString(fmt.Sprintf("\n>>  %v %v\n", req.Method, req.URL))
+	term.writeString("\n<<  ")
+	term.underscore()
+	term.printf("%v %v\n", req.Method, req.URL)
+	term.reset()
 	printHeaders(" > ", term, req.Header)
 
 	response, err := client.Do(req)
@@ -28,25 +30,30 @@ func doRequest(term *Term, req *http.Request) error {
 	}
 
 	defer response.Body.Close()
-	term.writeString(fmt.Sprintf("\n<<  HTTP %v\n", response.Status))
+	term.writeString("\n<<  ")
+	term.underscore()
+	term.printf("HTTP %v\n", response.Status)
+	term.reset()
 	printHeaders(" < ", term, response.Header)
 	printResponse(term, response)
 	return nil
 }
 
 func printHeaders(prompt string, term *Term, headers http.Header) {
-	// term.writeString(fmt.Sprintf("%v Headers\n", title))
 	for header, values := range headers {
 		if strings.ToLower(header) == "authorization" {
-			term.writeString(fmt.Sprintf("%v %v : [****************]\n", prompt, header))
+			term.printf("%v %v : [****************]\n", prompt, header)
 		} else {
-			term.writeString(fmt.Sprintf("%v %v : %v\n", prompt, header, values))
+			term.printf("%v %v : %v\n", prompt, header, values)
 		}
 	}
 }
 
 func printResponse(term *Term, response *http.Response) {
-	term.writeString("\n<<  Content: \n")
+	term.writeString("\n<<  ")
+	term.underscore()
+	term.writeString("Content:\n")
+	term.reset()
 	if response.ContentLength != 0 {
 		formatted := new(bytes.Buffer)
 		buf := new(bytes.Buffer)

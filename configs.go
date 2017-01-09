@@ -2,8 +2,11 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
+	"os/user"
 	"path/filepath"
+	"strings"
 )
 
 type configuration struct {
@@ -42,4 +45,47 @@ func defaultConfig() *configuration {
 	settings.Settings["root"] = "http://localhost"
 
 	return &configuration{name: "acro", path: "", settings: *settings}
+}
+
+func getConfigRoot() (string, error) {
+
+	root = os.Getenv("ACRO_CONFIG_ROOT")
+	if len(root) > 0 {
+		return root, nil
+	}
+
+	usr, err := user.Current()
+	if err != nil {
+		return "", err
+	}
+
+	return filepath.Join(usr.HomeDir, ".acromantula"), nil
+}
+
+func getConfigPath(configName string) (string, error) {
+
+	if len(configRoot) == 0 {
+		return "", fmt.Errorf("Cannot determine config location because config root is not known.")
+	}
+	return filepath.Join(configRoot, configName+".yml"), nil
+}
+
+func printConfigs(configRoot string) {
+
+	if len(configRoot) == 0 {
+		term.writeString("Can't print configs, no config root defined\n")
+	}
+
+	files, err := ioutil.ReadDir(configRoot)
+	if err != nil {
+		term.printf("Couldn't list configurations: %s\n", err)
+		return
+	}
+
+	for _, file := range files {
+		if filepath.Ext(file.Name()) == ".yml" {
+			configName := strings.TrimSuffix(file.Name(), filepath.Ext(file.Name()))
+			term.printf(" %v\n", configName)
+		}
+	}
 }

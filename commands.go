@@ -128,14 +128,6 @@ func buildURL(tokens []string) (*url.URL, error) {
 		}
 	}
 
-	// if len(tokens) > 1 {
-	// 	var err error
-	// 	tokenURL, err = url.Parse(tokens[1])
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// }
-
 	url := rootURL.ResolveReference(tokenURL)
 	if len(url.String()) == 0 {
 		return nil, fmt.Errorf("No URL specified!")
