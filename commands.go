@@ -1,9 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
+	"path/filepath"
 	"strings"
 )
 
@@ -69,7 +72,22 @@ type httpCommand struct {
 }
 
 func (c *httpCommand) exec(tokens []string, term *Term, config *configuration) {
-	url, err := buildURL(tokens)
+
+	//
+	// Enforcing the preconditions:  Either there must be no parameters after the GET/HEAD/delete
+	// command, or the first parameter must be a relative URL.
+	//
+	if len(tokens) > 2 || strings.HasPrefix(tokens[1], "@") {
+		term.printf("Usage: %s [URL path]\n", c.method)
+		return
+	}
+
+	var urlToken string
+	if len(tokens) == 2 {
+		urlToken = tokens[1]
+	}
+
+	url, err := parseURL(config.settings.Settings["root"], urlToken)
 	if err != nil {
 		term.printf("Couldn't build URL: %v\n", err)
 		return
@@ -85,12 +103,12 @@ func (c *httpCommand) exec(tokens []string, term *Term, config *configuration) {
 	// User-specified params.
 	//
 	params := request.URL.Query()
-	for k, v := range settings.Params {
+	for k, v := range config.settings.Params {
 		params.Add(k, v)
 	}
 	request.URL.RawQuery = params.Encode()
 
-	for k, v := range settings.Headers {
+	for k, v := range config.settings.Headers {
 		request.Header[k] = []string{v}
 	}
 
@@ -100,38 +118,106 @@ func (c *httpCommand) exec(tokens []string, term *Term, config *configuration) {
 	}
 }
 
-func buildURL(tokens []string) (*url.URL, error) {
-	root := settings.Settings["root"]
-	rootURL, _ := url.Parse("")
-	tokenURL, _ := url.Parse("")
+func parseURL(root, token string) (*url.URL, error) {
 
-	var err error
+	if len(root) == 0 && len(token) == 0 {
+		return nil, fmt.Errorf("Root and passed URL cannot both be empty")
+	}
 
-	if len(root) > 0 {
-		rootURL, err = url.Parse(root)
-		if err != nil {
-			return nil, err
-		}
+	rootURL, _ := url.Parse(root)
+	tokenURL, _ := url.Parse(token)
+
+	//
+	// Absolute URLs don't utilize root at all
+	//
+	if tokenURL.IsAbs() || len(root) == 0 {
+		return tokenURL, nil
+	}
+
+	if len(token) == 0 {
+		return rootURL, nil
+	}
+
+	return rootURL.ResolveReference(tokenURL), nil
+}
+
+type httpBodyCommand struct {
+	method string
+}
+
+func (c *httpBodyCommand) exec(tokens []string, term *Term, config *configuration) {
+
+	//
+	// Enforcing the preconditions:  Either there must be no parameters after the GET/HEAD/delete
+	// command, or the first parameter must be a relative URL.
+	//
+	if len(tokens) > 3 || (len(tokens) == 2 && strings.HasPrefix(tokens[1], "@")) {
+		term.printf("Usage: %s [<URL path> [@/path/to/data]]\n", c.method)
+		return
+	}
+
+	var urlToken string
+	if len(tokens) > 1 {
+		urlToken = tokens[1]
+	}
+
+	postURL, err := parseURL(config.settings.Settings["root"], urlToken)
+	if err != nil {
+		term.printf("Couldn't build URL: %v\n", err)
+		return
+	}
+
+	// Optional request body, may be either parameter or data based.
+	var body []byte
+	contentType := ""
+
+	//
+	// User-specified params, this is overridden by any explicitly set POST
+	// data (see @ token)
+	//
+	params := url.Values{}
+	for k, v := range config.settings.Params {
+		params.Add(k, v)
+	}
+	if len(params) > 0 {
+		contentType = "application/x-www-form-urlencoded"
+		body = []byte(params.Encode())
 	}
 
 	//
-	// Any parameters that begin with a quote or @ cannot be the URL.
+	// If any of the tokens starts with @, this is the file path to a data file that should be posted.
 	//
-	for _, val := range tokens[1:] {
-		if !strings.HasPrefix(val, "@") && !strings.HasPrefix(val, "#") {
-			var err error
-			tokenURL, err = url.Parse(val)
+	for _, token := range tokens {
+		if strings.HasPrefix(token, "@") {
+			dataFile := strings.TrimPrefix(token, "@")
+			data, err := ioutil.ReadFile(dataFile)
 			if err != nil {
-				return nil, err
+				term.printf("Could perform %s, cannot read %v: %v\n", c.method, dataFile, err)
+				return
 			}
+			body = data
+			contentType = contentTypes[strings.TrimPrefix(filepath.Ext(dataFile), ".")]
 			break
 		}
 	}
 
-	url := rootURL.ResolveReference(tokenURL)
-	if len(url.String()) == 0 {
-		return nil, fmt.Errorf("No URL specified!")
+	request, err := http.NewRequest(c.method, postURL.String(), bytes.NewReader(body))
+	if err != nil {
+		term.printf("Couldn't build request: %v\n", err)
+		return
 	}
 
-	return url, nil
+	for k, v := range config.settings.Headers {
+		request.Header[k] = []string{v}
+	}
+
+	// If no custom Content-Type has been specified, use what we've discovered
+	if len(config.settings.Headers["Content-Type"]) == 0 {
+		request.Header["Content-Type"] = []string{contentType}
+	}
+
+	err = doRequest(term, request)
+	if err != nil {
+		term.printf("Error performing %s: %v\n", c.method, err)
+	}
 }

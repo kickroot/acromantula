@@ -49,7 +49,7 @@ func defaultConfig() *configuration {
 
 func getConfigRoot() (string, error) {
 
-	root = os.Getenv("ACRO_CONFIG_ROOT")
+	root := os.Getenv("ACRO_CONFIG_ROOT")
 	if len(root) > 0 {
 		return root, nil
 	}

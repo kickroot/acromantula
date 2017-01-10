@@ -14,7 +14,7 @@ func (c *configurationCommand) exec(tokens []string, term *Term, config *configu
 	switch tokens[1] {
 	case "save":
 		// With only 2 params, save to the current config
-		targetConfig := currentConfig
+		targetConfig := config.name
 		if len(tokens) > 2 {
 			targetConfig = tokens[2]
 		}
@@ -54,12 +54,10 @@ func (c *configurationCommand) exec(tokens []string, term *Term, config *configu
 				return
 			}
 
-			// Todo: We need to encapsulate this better, these are defined in acro.go
+			// Todo: We need to encapsulate better, these are defined in acro.go
 			config.name = conf.name
 			config.path = conf.path
 			config.settings = conf.settings
-			settings = &(conf.settings)
-			currentConfig = config.name
 			updatePrompt()
 			initCommands(config)
 		}
