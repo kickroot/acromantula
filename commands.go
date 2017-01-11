@@ -23,13 +23,26 @@ type command interface {
 	//
 	// Tokens will always be the comoplete slice of parsed tokens
 	exec(tokens []string, term *Term, config *configuration)
+
+	usage() string
+
+	description() string
 }
 
 //
 // We can utilize the same logic and code for headers, settings, and params
 //
 type mapCommand struct {
+	desc       string
 	backingMap map[string]string
+}
+
+func (c *mapCommand) description() string {
+	return c.desc
+}
+
+func (c *mapCommand) usage() string {
+	return fmt.Sprintf("[set <key> <value>] | [unset <key>]")
 }
 
 func (c *mapCommand) exec(tokens []string, term *Term, config *configuration) {
@@ -39,8 +52,8 @@ func (c *mapCommand) exec(tokens []string, term *Term, config *configuration) {
 	// contents
 	//
 	if len(tokens) == 1 {
-		for k, v := range c.backingMap {
-			term.printf(" %v => %v\n", k, v)
+		for _, k := range sortKeys(c.backingMap) {
+			term.printf(" %v => %v\n", k, c.backingMap[k])
 		}
 		return
 	}
@@ -69,6 +82,14 @@ func (c *mapCommand) exec(tokens []string, term *Term, config *configuration) {
 
 type httpCommand struct {
 	method string
+}
+
+func (c *httpCommand) description() string {
+	return fmt.Sprintf("Executes an HTTP %s request", c.method)
+}
+
+func (c *httpCommand) usage() string {
+	return fmt.Sprintf("[url]")
 }
 
 func (c *httpCommand) exec(tokens []string, term *Term, config *configuration) {
@@ -143,6 +164,14 @@ func parseURL(root, token string) (*url.URL, error) {
 
 type httpBodyCommand struct {
 	method string
+}
+
+func (c *httpBodyCommand) usage() string {
+	return fmt.Sprintf("[<url> [@/path/to/file]]")
+}
+
+func (c *httpBodyCommand) description() string {
+	return fmt.Sprintf("Executes an HTTP %s request", c.method)
 }
 
 func (c *httpBodyCommand) exec(tokens []string, term *Term, config *configuration) {

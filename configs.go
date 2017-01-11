@@ -40,9 +40,8 @@ func defaultConfig() *configuration {
 	settings := defaultSettings()
 	settings.Headers["Accept"] = "application/json, application/xml, application/xhtml+xml;q=0.9, text/html;q=0.9"
 	settings.Headers["Accept-Charset"] = "utf-8"
-	settings.Headers["User-Agent"] = "Acromantula CLI 0.1.0"
-
 	settings.Settings["root"] = "http://localhost"
+	settings.Settings["prompt"] = "acro"
 
 	return &configuration{name: "acro", path: "", settings: *settings}
 }

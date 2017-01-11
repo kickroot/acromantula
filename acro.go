@@ -3,9 +3,12 @@ package main
 import (
 	"fmt"
 	"os"
+	"sort"
+	"strings"
 )
 
-const defaultConfigName string = "acro"
+const acroVersion = "0.1.0-alpha"
+const defaultConfigName = "default"
 
 var configRoot string
 var term *Term
@@ -15,14 +18,14 @@ var headersCommand *mapCommand
 var paramsCommand *mapCommand
 var settingsCommand *mapCommand
 
+var commands map[string]command
+
 var getCommand = &httpCommand{method: "GET"}
 var deleteCommand = &httpCommand{method: "DELETE"}
 var headCommand = &httpCommand{method: "HEAD"}
 var putCommand = &httpBodyCommand{method: "PUT"}
 var postCommand = &httpBodyCommand{method: "POST"}
 var configCommand = &configurationCommand{}
-
-// var configCommand *configurationCommand
 
 func main() {
 	var err error
@@ -76,6 +79,7 @@ func main() {
 	}
 
 	updatePrompt()
+	term.printf("Acromantula %s\n", acroVersion)
 	term.writeString("Hit Ctrl+D to quit\n")
 
 	defer term.restoreTerm()
@@ -94,45 +98,67 @@ func main() {
 			continue
 		}
 
-		switch tokens[0] {
-		case "header":
-			headersCommand.exec(tokens, term, config)
-		case "headers":
-			headersCommand.exec(tokens, term, config)
-		case "set":
-			settingsCommand.exec(tokens, term, config)
-			updatePrompt()
-		case "settings":
-			settingsCommand.exec(tokens, term, config)
-			updatePrompt()
-		case "param":
-			paramsCommand.exec(tokens, term, config)
-		case "params":
-			paramsCommand.exec(tokens, term, config)
-		case "get":
-			getCommand.exec(tokens, term, config)
-		case "delete":
-			deleteCommand.exec(tokens, term, config)
-		case "head":
-			headCommand.exec(tokens, term, config)
-		case "post":
-			postCommand.exec(tokens, term, config)
-		case "put":
-			putCommand.exec(tokens, term, config)
-		case "configs":
-			configCommand.exec(tokens, term, config)
-		case "config":
-			configCommand.exec(tokens, term, config)
-		default:
+		cmd := commands[strings.ToLower(tokens[0])]
+		if cmd == nil {
 			term.writeString(fmt.Sprintf("Unknown command, %v\r\n", tokens[0]))
+		} else {
+			cmd.exec(tokens, term, config)
 		}
+		// switch tokens[0] {
+		// case "header":
+		// 	headersCommand.exec(tokens, term, config)
+		// case "headers":
+		// 	headersCommand.exec(tokens, term, config)
+		// case "set":
+		// 	settingsCommand.exec(tokens, term, config)
+		// case "settings":
+		// 	settingsCommand.exec(tokens, term, config)
+		// case "param":
+		// 	paramsCommand.exec(tokens, term, config)
+		// case "params":
+		// 	paramsCommand.exec(tokens, term, config)
+		// case "get":
+		// 	getCommand.exec(tokens, term, config)
+		// case "delete":
+		// 	deleteCommand.exec(tokens, term, config)
+		// case "head":
+		// 	headCommand.exec(tokens, term, config)
+		// case "post":
+		// 	postCommand.exec(tokens, term, config)
+		// case "put":
+		// 	putCommand.exec(tokens, term, config)
+		// case "configs":
+		// 	configCommand.exec(tokens, term, config)
+		// case "config":
+		// 	configCommand.exec(tokens, term, config)
+		// default:
+
+		// }
+		updatePrompt()
 	}
 }
 
 func initCommands(config *configuration) {
-	headersCommand = &mapCommand{backingMap: config.settings.Headers}
-	paramsCommand = &mapCommand{backingMap: config.settings.Params}
-	settingsCommand = &mapCommand{backingMap: config.settings.Settings}
+
+	commands = make(map[string]command)
+	commands["get"] = &httpCommand{method: "GET"}
+	commands["head"] = &httpCommand{method: "HEAD"}
+	commands["delete"] = &httpCommand{method: "DELETE"}
+	commands["post"] = &httpBodyCommand{method: "POST"}
+	commands["put"] = &httpBodyCommand{method: "PUT"}
+	commands["config"] = &configurationCommand{}
+	commands["help"] = &helpCommand{}
+
+	updateCommands(config)
+}
+
+func updateCommands(config *configuration) {
+	commands["headers"] = &mapCommand{desc: "Headers for all HTTP(S) requests", backingMap: config.settings.Headers}
+	commands["header"] = commands["headers"]
+	commands["params"] = &mapCommand{desc: "Request parameters for all HTTP(S) requests", backingMap: config.settings.Params}
+	commands["param"] = commands["params"]
+	commands["settings"] = &mapCommand{desc: "Application level settings and preferences", backingMap: config.settings.Settings}
+	commands["setting"] = commands["settings"]
 }
 
 func updatePrompt() {
@@ -147,4 +173,28 @@ func updatePrompt() {
 	}
 
 	term.setPrompt(prompt)
+}
+
+func sortKeys(m map[string]string) []string {
+	keys := make([]string, len(m))
+	i := 0
+	for k := range m {
+		keys[i] = k
+		i++
+	}
+
+	sort.Strings(keys)
+	return keys
+}
+
+func sortCommands(m map[string]command) []string {
+	keys := make([]string, len(m))
+	i := 0
+	for k := range m {
+		keys[i] = k
+		i++
+	}
+
+	sort.Strings(keys)
+	return keys
 }

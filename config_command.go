@@ -1,6 +1,16 @@
 package main
 
+import "fmt"
+
 type configurationCommand struct{}
+
+func (c *configurationCommand) description() string {
+	return "Allows the loading and saving of the currently active configuration."
+}
+
+func (c *configurationCommand) usage() string {
+	return fmt.Sprintf("")
+}
 
 func (c *configurationCommand) exec(tokens []string, term *Term, config *configuration) {
 	//

@@ -3,7 +3,9 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 )
@@ -40,13 +42,30 @@ func doRequest(term *Term, req *http.Request) error {
 }
 
 func printHeaders(prompt string, term *Term, headers http.Header) {
-	for header, values := range headers {
-		if strings.ToLower(header) == "authorization" {
-			term.printf("%v %v : [****************]\n", prompt, header)
+
+	if len(headers["User-Agent"]) == 0 {
+		headers["User-Agent"] = []string{fmt.Sprintf("Acromantula %s", acroVersion)}
+	}
+
+	for _, key := range sortHeaders(headers) {
+		if strings.ToLower(key) == "authorization" {
+			term.printf("%v %v : [****************]\n", prompt, key)
 		} else {
-			term.printf("%v %v : %v\n", prompt, header, values)
+			term.printf("%v %v : %v\n", prompt, key, headers[key])
 		}
 	}
+}
+
+func sortHeaders(h http.Header) []string {
+	keys := make([]string, len(h))
+	i := 0
+	for k := range h {
+		keys[i] = k
+		i++
+	}
+
+	sort.Strings(keys)
+	return keys
 }
 
 func printResponse(term *Term, response *http.Response) {
