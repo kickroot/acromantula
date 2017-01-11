@@ -1,5 +1,5 @@
 all: 
-	go build -o acro
+	go build
 
 install:
 	go install
@@ -8,4 +8,4 @@ test:
 	go test -v
 
 run:
-	go build -o acro && ./acro
+	go build && ./acromantula

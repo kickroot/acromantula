@@ -1,3 +1,19 @@
+/*
+Copyright 2017 Jason Nichols (jason@kickroot.com)
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package main
 
 import (
@@ -34,7 +50,7 @@ func (c *httpCommand) exec(tokens []string, term *Term, config *configuration) {
 	// Enforcing the preconditions:  Either there must be no parameters after the GET/HEAD/delete
 	// command, or the first parameter must be a relative URL.
 	//
-	if len(tokens) > 2 || strings.HasPrefix(tokens[1], "@") {
+	if len(tokens) > 2 || (len(tokens) == 2 && strings.HasPrefix(tokens[1], "@")) {
 		term.printf("Usage: %s [URL path]\n", c.method)
 		return
 	}
