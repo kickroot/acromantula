@@ -23,7 +23,7 @@ func TestBasicParse(t *testing.T) {
 	token := "me"
 	expected := "https://example.com/me"
 
-	url, err := parseURL(root, token)
+	url, err := buildURL(root, token)
 	if err != nil {
 		t.Fatalf("Expected a nil error value!")
 	}
@@ -38,7 +38,7 @@ func TestDoubleSlashes(t *testing.T) {
 	token := "/me"
 	expected := "https://example.com/me"
 
-	url, err := parseURL(root, token)
+	url, err := buildURL(root, token)
 	if err != nil {
 		t.Fatalf("Expected a nil error value!")
 	}
@@ -53,7 +53,7 @@ func TestNoSlashes(t *testing.T) {
 	token := "me"
 	expected := "https://example.com/me"
 
-	url, err := parseURL(root, token)
+	url, err := buildURL(root, token)
 	if err != nil {
 		t.Fatalf("Expected a nil error value!")
 	}
@@ -68,7 +68,7 @@ func TestAbsoluteURL(t *testing.T) {
 	token := "https://api.example.com"
 	expected := "https://api.example.com"
 
-	url, err := parseURL(root, token)
+	url, err := buildURL(root, token)
 	if err != nil {
 		t.Fatalf("Expected a nil error value!")
 	}
@@ -82,7 +82,7 @@ func TestNoURLs(t *testing.T) {
 	root := ""
 	token := ""
 
-	_, err := parseURL(root, token)
+	_, err := buildURL(root, token)
 	if err == nil {
 		t.Fatalf("Expected a non-nil error value!")
 	}

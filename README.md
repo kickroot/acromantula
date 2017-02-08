@@ -4,11 +4,14 @@
 
 ### Features
 - A request REPL
-- Persistent and selectable configurations for request parameters, headers, and base URI
+- Persistent and selectable configurations for request parameters, headers, and base URIs
 - Support for GET/HEAD/PUT/POST/DELETE methods
 - Automatic JSON formatting
 - Easy file uploads for PUT/POST
 - Automatic content-type detection for uploads
+
+### License
+Apache 2.0
 
 ### Upcoming Features
 - Proxy support

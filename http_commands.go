@@ -60,7 +60,7 @@ func (c *httpCommand) exec(tokens []string, term *Term, config *configuration) {
 		urlToken = tokens[1]
 	}
 
-	url, err := parseURL(config.settings.Settings["root"], urlToken)
+	url, abs, err := buildURL(config.settings.Settings["root"], urlToken)
 	if err != nil {
 		term.printf("Couldn't build URL: %v\n", err)
 		return
@@ -73,16 +73,22 @@ func (c *httpCommand) exec(tokens []string, term *Term, config *configuration) {
 	}
 
 	//
-	// User-specified params.
+	// If the user-supplied URL is absolute, don't attach the config's parameters/headers, as it may contain
+	// sensitive data.
 	//
-	params := request.URL.Query()
-	for k, v := range config.settings.Params {
-		params.Add(k, v)
-	}
-	request.URL.RawQuery = params.Encode()
+	if !abs {
+		//
+		// User-specified params.
+		//
+		params := request.URL.Query()
+		for k, v := range config.settings.Params {
+			params.Add(k, v)
+		}
+		request.URL.RawQuery = params.Encode()
 
-	for k, v := range config.settings.Headers {
-		request.Header[k] = []string{v}
+		for k, v := range config.settings.Headers {
+			request.Header[k] = []string{v}
+		}
 	}
 
 	err = doRequest(term, request)
@@ -91,10 +97,18 @@ func (c *httpCommand) exec(tokens []string, term *Term, config *configuration) {
 	}
 }
 
-func parseURL(root, token string) (*url.URL, error) {
+//
+// Build out the URL to be used as part of the request.  This is determined based on the
+// 1) The root URL specified in the settings
+// 2) The URL supplied as a command line token (if any).
+//
+// If #2 is a URL fragment, it will be appended to #1.  If #2 is an absolute URL, it will be used
+// in place of #1, in its entirety.
+//
+func buildURL(root, token string) (*url.URL, bool, error) {
 
 	if len(root) == 0 && len(token) == 0 {
-		return nil, fmt.Errorf("Root and passed URL cannot both be empty")
+		return nil, false, fmt.Errorf("Root and passed URL cannot both be empty")
 	}
 
 	rootURL, _ := url.Parse(root)
@@ -104,14 +118,14 @@ func parseURL(root, token string) (*url.URL, error) {
 	// Absolute URLs don't utilize root at all
 	//
 	if tokenURL.IsAbs() || len(root) == 0 {
-		return tokenURL, nil
+		return tokenURL, true, nil
 	}
 
 	if len(token) == 0 {
-		return rootURL, nil
+		return rootURL, false, nil
 	}
 
-	return rootURL.ResolveReference(tokenURL), nil
+	return rootURL.ResolveReference(tokenURL), false, nil
 }
 
 type httpBodyCommand struct {
@@ -142,7 +156,7 @@ func (c *httpBodyCommand) exec(tokens []string, term *Term, config *configuratio
 		urlToken = tokens[1]
 	}
 
-	postURL, err := parseURL(config.settings.Settings["root"], urlToken)
+	postURL, abs, err := buildURL(config.settings.Settings["root"], urlToken)
 	if err != nil {
 		term.printf("Couldn't build URL: %v\n", err)
 		return
@@ -153,16 +167,22 @@ func (c *httpBodyCommand) exec(tokens []string, term *Term, config *configuratio
 	contentType := ""
 
 	//
-	// User-specified params, this is overridden by any explicitly set POST
-	// data (see @ token)
+	// If the user-supplied URL is absolute, don't attach the config's parameters/headers, as it may contain
+	// sensitive data.
 	//
-	params := url.Values{}
-	for k, v := range config.settings.Params {
-		params.Add(k, v)
-	}
-	if len(params) > 0 {
-		contentType = "application/x-www-form-urlencoded"
-		body = []byte(params.Encode())
+	if !abs {
+		//
+		// User-specified params, this is overridden by any explicitly set POST
+		// data (see @ token)
+		//
+		params := url.Values{}
+		for k, v := range config.settings.Params {
+			params.Add(k, v)
+		}
+		if len(params) > 0 {
+			contentType = "application/x-www-form-urlencoded"
+			body = []byte(params.Encode())
+		}
 	}
 
 	//
@@ -188,8 +208,10 @@ func (c *httpBodyCommand) exec(tokens []string, term *Term, config *configuratio
 		return
 	}
 
-	for k, v := range config.settings.Headers {
-		request.Header[k] = []string{v}
+	if !abs {
+		for k, v := range config.settings.Headers {
+			request.Header[k] = []string{v}
+		}
 	}
 
 	// If no custom Content-Type has been specified, use what we've discovered
